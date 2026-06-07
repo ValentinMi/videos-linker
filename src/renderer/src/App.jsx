@@ -62,6 +62,7 @@ export default function App() {
   const [successPath, setSuccessPath] = useState(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const cleanupRef = useRef(null)
+  const isDragOverRef = useRef(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -108,16 +109,26 @@ export default function App() {
     }
   }
 
-  const handleWindowDragOver = (e) => { e.preventDefault(); setIsDragOver(true) }
+  const handleWindowDragOver = (e) => {
+    e.preventDefault()
+    if (!isDragOverRef.current) {
+      isDragOverRef.current = true
+      setIsDragOver(true)
+    }
+  }
   const handleWindowDragLeave = (e) => {
-    if (!e.currentTarget.contains(e.relatedTarget)) setIsDragOver(false)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      isDragOverRef.current = false
+      setIsDragOver(false)
+    }
   }
   const handleWindowDrop = (e) => {
     e.preventDefault()
+    isDragOverRef.current = false
     setIsDragOver(false)
     const paths = Array.from(e.dataTransfer.files)
       .filter(f => /\.(mp4|avi|mkv|mov|webm|flv|wmv|ts|m4v|3gp)$/i.test(f.name))
-      .map(f => f.path)
+      .map(f => window.api.getFilePath(f))
     if (paths.length) addVideoPaths(paths)
   }
 

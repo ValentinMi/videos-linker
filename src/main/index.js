@@ -69,22 +69,31 @@ ipcMain.handle('select-output', async () => {
 })
 
 ipcMain.handle('merge-videos', async (event, { videoPaths, outputPath }) => {
+  if (!Array.isArray(videoPaths) || videoPaths.length < 2) {
+    throw new Error('Au moins 2 vidéos sont requises.')
+  }
+  if (!outputPath || typeof outputPath !== 'string') {
+    throw new Error('Chemin de sortie invalide.')
+  }
+
   const ffmpegPath = getFfmpegPath()
   const listPath = join(tmpdir(), `vl_concat_${Date.now()}.txt`)
 
-  // FFmpeg concat demuxer requires forward slashes and escaped single quotes
+  // Double-quoted paths handle apostrophes; escape only double quotes (rare in filenames)
   const listContent = videoPaths
-    .map(p => `file '${p.replace(/\\/g, '/').replace(/'/g, "\\'")}'`)
+    .map(p => `file "${p.replace(/\\/g, '/').replace(/"/g, '\\"')}"`)
     .join('\n')
 
   writeFileSync(listPath, listContent, 'utf8')
 
   return new Promise((resolve, reject) => {
     const proc = spawn(ffmpegPath, [
+      '-fflags', '+genpts',
       '-f', 'concat',
       '-safe', '0',
       '-i', listPath,
       '-c', 'copy',
+      '-movflags', '+faststart',
       '-y',
       outputPath
     ])
